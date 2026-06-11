@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="A beautiful mobile time tracking app. Tap blocks to track your day, view timelines, and annotate activities.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a1a">
+<title>TimeFlow — Track Your Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #12122a;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.08);
+  --bg-glass: rgba(255,255,255,0.06);
+  --bg-glass-strong: rgba(255,255,255,0.1);
+  --border-glass: rgba(255,255,255,0.08);
+  --border-glass-strong: rgba(255,255,255,0.15);
+  --text-primary: #f0f0f8;
+  --text-secondary: rgba(240,240,248,0.6);
+  --text-tertiary: rgba(240,240,248,0.35);
+  --accent: #7c5cfc;
+  --danger: #ff4d6a;
+  --success: #2ed573;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tab-height: 64px;
+  --header-height: 56px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-primary);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+.pal-0  { --block-color: #6C5CE7; --block-bg: rgba(108,92,231,0.15); }
+.pal-1  { --block-color: #00B894; --block-bg: rgba(0,184,148,0.15); }
+.pal-2  { --block-color: #FD79A8; --block-bg: rgba(253,121,168,0.15); }
+.pal-3  { --block-color: #FDCB6E; --block-bg: rgba(253,203,110,0.15); }
+.pal-4  { --block-color: #0984E3; --block-bg: rgba(9,132,227,0.15); }
+.pal-5  { --block-color: #E17055; --block-bg: rgba(225,112,85,0.15); }
+.pal-6  { --block-color: #00CEC9; --block-bg: rgba(0,206,201,0.15); }
+.pal-7  { --block-color: #A29BFE; --block-bg: rgba(162,155,254,0.15); }
+.pal-8  { --block-color: #FF6B6B; --block-bg: rgba(255,107,107,0.15); }
+.pal-9  { --block-color: #48DBFB; --block-bg: rgba(72,219,251,0.15); }
+.pal-10 { --block-color: #FF9FF3; --block-bg: rgba(255,159,243,0.15); }
+.pal-11 { --block-color: #1DD1A1; --block-bg: rgba(29,209,161,0.15); }
+
+.hidden { display: none !important; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; color: inherit; background: none; border: none; outline: none; }
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* HEADER */
+.header {
+  height: var(--header-height);
+  padding: 0 20px;
+  padding-top: var(--safe-top);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c5cfc, #00cec9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-subtitle { font-size: 12px; color: var(--text-tertiary); }
+
+/* VIEWS */
+.view-container { flex: 1; overflow: hidden; position: relative; }
+.view {
+  position: absolute; inset: 0; overflow-y: auto;
+  padding: 8px 16px 20px;
+  opacity: 0; transform: translateY(12px); pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.view.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+/* TAB BAR */
+.tab-bar {
+  height: var(--tab-height);
+  padding-bottom: var(--safe-bottom);
+  display: flex; align-items: center; justify-content: space-around;
+  background: rgba(12,12,30,0.85);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-glass);
+  flex-shrink: 0; z-index: 10;
+}
+.tab-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 6px 12px; border-radius: 12px;
+  transition: all 0.2s; position: relative;
+}
+.tab-btn .tab-icon { font-size: 20px; transition: transform 0.2s; }
+.tab-btn .tab-label { font-size: 9px; font-weight: 600; color: var(--text-tertiary); transition: color 0.2s; }
+.tab-btn.active .tab-icon { transform: scale(1.15); }
+.tab-btn.active .tab-label { color: var(--accent); }
+.tab-btn.active::after {
+  content: ''; position: absolute; top: -1px; left: 50%;
+  transform: translateX(-50%); width: 20px; height: 3px;
+  border-radius: 0 0 4px 4px; background: var(--accent);
+}
+.tab-btn:active { transform: scale(0.93); }
+
+/* SECTION TITLE */
+.section-title {
+  font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 10px; margin-top: 6px;
+}
+
+/* FILTER BAR (Track view) */
+.filter-bar {
+  display: flex; gap: 6px; overflow-x: auto;
+  padding-bottom: 10px; margin-bottom: 4px;
+  -ms-overflow-style: none; scrollbar-width: none;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-chip {
+  padding: 5px 12px; border-radius: 16px;
+  background: var(--bg-glass); border: 1px solid var(--border-glass);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  color: var(--text-secondary); transition: all 0.2s; flex-shrink: 0;
+}
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+.filter-chip:active { transform: scale(0.95); }
+
+/* BLOCKS GRID — 3 col square */
+.blocks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.block-card {
+  position: relative;
+  padding: 12px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--block-bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.25s ease;
+  overflow: hidden;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+}
+.block-card::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--block-color);
+}
+.block-card:active { transform: scale(0.94); }
+
+/* STRONG GLOW for active block */
+.block-card.is-active {
+  border-color: var(--block-color);
+  animation: activeGlow 2s ease-in-out infinite;
+}
+@keyframes activeGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px color-mix(in srgb, var(--block-color) 30%, transparent),
+                0 0 40px color-mix(in srgb, var(--block-color) 15%, transparent),
+                inset 0 0 20px color-mix(in srgb, var(--block-color) 8%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 25px color-mix(in srgb, var(--block-color) 50%, transparent),
+                0 0 70px color-mix(in srgb, var(--block-color) 25%, transparent),
+                inset 0 0 35px color-mix(in srgb, var(--block-color) 12%, transparent);
+  }
+}
+
+.block-card .block-name {
+  font-size: 12px; font-weight: 700;
+  color: var(--block-color); word-break: break-word;
+  line-height: 1.2;
+}
+.block-card .block-tag {
+  font-size: 8px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 2px 6px; border-radius: 4px;
+  opacity: 0.8;
+}
+.block-card .block-today {
+  font-size: 9px; color: var(--text-tertiary);
+}
+.block-card .block-timer {
+  font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.block-card .block-status {
+  font-size: 8px; font-weight: 700; text-transform: uppercase;
+  color: var(--success);
+}
+.block-card .block-menu-btn {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-tertiary);
+  background: rgba(255,255,255,0.05);
+}
+
+.add-block-card {
+  padding: 12px; border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-glass-strong);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px;
+  aspect-ratio: 1; transition: all 0.2s; color: var(--text-tertiary);
+}
+.add-block-card:active { transform: scale(0.94); border-color: var(--accent); color: var(--accent); }
+.add-block-card .plus { font-size: 24px; font-weight: 300; }
+.add-block-card .label { font-size: 10px; font-weight: 600; }
+
+/* STATS BAR */
+.stats-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+.stat-card {
+  flex: 1; padding: 10px; border-radius: var(--radius-md);
+  background: var(--bg-glass); border: 1px solid var(--border-glass);
+  text-align: center;
+}
+.stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 9px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* TIMELINE VIEW */
+.timeline-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.date-nav { display: flex; align-items: center; gap: 6px; }
+.date-nav button {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: var(--bg-glass); border: 1px solid var(--border-glass);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.date-nav button:active { transform: scale(0.92); }
+.date-nav .date-label { font-size: 14px; font-weight: 600; min-width: 120px; text-align: center; }
+.today-btn {
+  padding: 6px 12px; border-radius: 8px; background: var(--accent);
+  color: white; font-size: 11px; font-weight: 600;
+}
+.today-btn:active { transform: scale(0.95); }
+
+.timeline-scroll { position: relative; }
+.timeline-empty { text-align: center; padding: 50px 20px; color: var(--text-tertiary); }
+.timeline-empty .emoji { font-size: 40px; margin-bottom: 10px; }
+.timeline-empty .msg { font-size: 13px; }
+
+.timeline-entry {
+  position: relative; padding: 12px 14px 12px 18px;
+  margin-bottom: 8px; border-radius: var(--radius-md);
+  background: var(--bg-card); border: 1px solid var(--border-glass);
+  transition: all 0.2s; animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.timeline-entry::before {
+  content: ''; position: absolute; left: 0; top: 0;
+  width: 4px; height: 100%; border-radius: 4px 0 0 4px;
+  background: var(--entry-color, var(--accent));
+}
+.timeline-entry:active { background: var(--bg-card-hover); }
+.entry-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.entry-block-name { font-size: 13px; font-weight: 700; color: var(--entry-color, var(--accent)); }
+.entry-duration { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-glass); padding: 2px 7px; border-radius: 6px; }
+.entry-time { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.entry-annotation { font-size: 12px; color: var(--text-primary); margin-top: 5px; padding: 5px 9px; background: var(--bg-glass); border-radius: 7px; border-left: 2px solid var(--entry-color, var(--accent)); }
+.entry-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+.entry-tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 5px; }
+.tag-morning   { background: rgba(253,203,110,0.15); color: #FDCB6E; }
+.tag-afternoon { background: rgba(225,112,85,0.15); color: #E17055; }
+.tag-evening   { background: rgba(108,92,231,0.15); color: #A29BFE; }
+.tag-night     { background: rgba(9,132,227,0.15); color: #48DBFB; }
+
+/* ANALYTICS VIEW */
+.analytics-card {
+  background: var(--bg-card); border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px;
+}
+.analytics-card-title {
+  font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+}
+.analytics-big-stat {
+  text-align: center; padding: 10px 0;
+}
+.analytics-big-stat .big-val {
+  font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #7c5cfc, #00cec9);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.analytics-big-stat .big-label { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+.insight-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.insight-card {
+  flex: 1; padding: 12px; border-radius: var(--radius-sm);
+  background: var(--bg-glass); border: 1px solid var(--border-glass);
+  text-align: center;
+}
+.insight-val { font-size: 18px; font-weight: 700; }
+.insight-label { font-size: 9px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; margin-top: 2px; }
+
+/* Bar chart */
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 8px; }
+.bar-label { font-size: 11px; font-weight: 600; width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.bar-track { flex: 1; height: 22px; background: var(--bg-glass); border-radius: 6px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); min-width: 2px; position: relative; }
+.bar-fill-label { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 9px; font-weight: 700; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+
+/* Donut chart (CSS conic gradient) */
+.donut-container { display: flex; align-items: center; gap: 20px; justify-content: center; }
+.donut {
+  width: 100px; height: 100px; border-radius: 50%;
+  position: relative; flex-shrink: 0;
+}
+.donut::after {
+  content: ''; position: absolute;
+  top: 20px; left: 20px; right: 20px; bottom: 20px;
+  border-radius: 50%; background: var(--bg-secondary);
+}
+.donut-legend { display: flex; flex-direction: column; gap: 6px; }
+.donut-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.donut-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* Weekly bars */
+.week-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; justify-content: space-between; }
+.week-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.week-bar {
+  width: 100%; border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--accent), rgba(124,92,252,0.3));
+  transition: height 0.5s cubic-bezier(0.4,0,0.2,1);
+  min-height: 2px;
+}
+.week-bar-label { font-size: 9px; color: var(--text-tertiary); font-weight: 600; }
+.week-bar-val { font-size: 8px; color: var(--text-secondary); font-weight: 600; }
+
+/* Period selector */
+.period-selector { display: flex; gap: 4px; margin-bottom: 14px; }
+.period-btn {
+  flex: 1; padding: 7px; border-radius: 8px; font-size: 11px; font-weight: 600;
+  background: var(--bg-glass); border: 1px solid var(--border-glass);
+  color: var(--text-secondary); text-align: center; transition: all 0.2s;
+}
+.period-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+.period-btn:active { transform: scale(0.96); }
+
+/* SETTINGS */
+.settings-section { margin-bottom: 20px; }
+.settings-section-title { font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.settings-card { background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius-md); overflow: hidden; }
+.settings-item {
+  padding: 12px 14px; display: flex; align-items: center;
+  justify-content: space-between; border-bottom: 1px solid var(--border-glass); transition: background 0.15s;
+}
+.settings-item:last-child { border-bottom: none; }
+.settings-item:active { background: var(--bg-card-hover); }
+.settings-item .si-left { display: flex; align-items: center; gap: 10px; }
+.settings-item .si-icon { font-size: 18px; }
+.settings-item .si-label { font-size: 13px; font-weight: 500; }
+.settings-item .si-desc { font-size: 10px; color: var(--text-tertiary); }
+.settings-item .si-right { font-size: 16px; color: var(--text-tertiary); }
+
+.block-list-item { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-glass); }
+.block-list-item:last-child { border-bottom: none; }
+.block-list-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.block-list-name { flex: 1; font-size: 13px; font-weight: 500; }
+.block-list-tag { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+.block-list-actions { display: flex; gap: 4px; }
+.block-list-actions button { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; background: var(--bg-glass); }
+
+/* MODALS */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  z-index: 100; display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-sheet {
+  width: 100%; max-width: 480px; max-height: 85dvh;
+  background: var(--bg-secondary); border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 12px 20px 20px; padding-bottom: calc(20px + var(--safe-bottom));
+  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: auto;
+}
+.modal-overlay.active .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.15); margin: 0 auto 16px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+.modal-field { margin-bottom: 14px; }
+.modal-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.modal-input { width: 100%; padding: 11px 13px; border-radius: var(--radius-sm); background: var(--bg-glass); border: 1px solid var(--border-glass); font-size: 14px; color: var(--text-primary); transition: border-color 0.2s; }
+.modal-input:focus { border-color: var(--accent); }
+.modal-input::placeholder { color: var(--text-tertiary); }
+textarea.modal-input { resize: vertical; min-height: 70px; }
+.modal-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.modal-tag-btn {
+  padding: 7px 14px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border-glass); background: var(--bg-glass);
+  color: var(--text-secondary); transition: all 0.2s;
+}
+.modal-tag-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
+.modal-tag-btn:active { transform: scale(0.95); }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-btn {
+  flex: 1; padding: 13px; border-radius: var(--radius-sm); font-size: 14px;
+  font-weight: 600; text-align: center; transition: all 0.2s;
+}
+.modal-btn:active { transform: scale(0.97); }
+.modal-btn-primary { background: var(--accent); color: white; }
+.modal-btn-secondary { background: var(--bg-glass); color: var(--text-secondary); border: 1px solid var(--border-glass); }
+.modal-btn-danger { background: rgba(255,77,106,0.15); color: var(--danger); border: 1px solid rgba(255,77,106,0.2); }
+
+.context-menu {
+  position: absolute; background: var(--bg-secondary);
+  border: 1px solid var(--border-glass-strong); border-radius: var(--radius-sm);
+  padding: 5px; z-index: 50; min-width: 130px; box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.15s ease;
+}
+.context-menu button {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  padding: 9px 10px; border-radius: 7px; font-size: 12px; font-weight: 500;
+}
+.context-menu button:active { background: var(--bg-glass); }
+.context-menu button.danger-item { color: var(--danger); }
+
+#importInput { display: none; }
+
+/* No data state for analytics */
+.no-data-msg { text-align: center; padding: 30px; color: var(--text-tertiary); font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="header">
+    <div>
+      <div class="header-title">TimeFlow</div>
+      <div class="header-subtitle" id="headerDate"></div>
+    </div>
+  </header>
+
+  <div class="view-container">
+    <!-- TRACK VIEW -->
+    <div class="view active" id="trackView">
+      <div id="statsBar" class="stats-bar"></div>
+      <div class="section-title">Filter</div>
+      <div class="filter-bar" id="trackFilterBar"></div>
+      <div class="section-title">Your Blocks</div>
+      <div class="blocks-grid" id="blocksGrid"></div>
+    </div>
+
+    <!-- TIMELINE VIEW -->
+    <div class="view" id="timelineView">
+      <div class="timeline-header">
+        <div class="date-nav">
+          <button id="prevDay">◀</button>
+          <div class="date-label" id="timelineDateLabel"></div>
+          <button id="nextDay">▶</button>
+        </div>
+        <button class="today-btn" id="todayBtn">Today</button>
+      </div>
+      <div class="timeline-scroll" id="timelineScroll"></div>
+    </div>
+
+    <!-- ANALYTICS VIEW -->
+    <div class="view" id="analyticsView">
+      <div class="period-selector" id="periodSelector">
+        <button class="period-btn active" data-period="today">Today</button>
+        <button class="period-btn" data-period="week">This Week</button>
+        <button class="period-btn" data-period="month">This Month</button>
+        <button class="period-btn" data-period="all">All Time</button>
+      </div>
+      <div id="analyticsContent"></div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div class="view" id="settingsView">
+      <div class="settings-section">
+        <div class="settings-section-title">Manage Blocks</div>
+        <div class="settings-card" id="blocksList"></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Data</div>
+        <div class="settings-card">
+          <button class="settings-item" id="exportBtn">
+            <div class="si-left"><span class="si-icon">📤</span><div><div class="si-label">Export Data</div><div class="si-desc">Download as JSON</div></div></div>
+            <span class="si-right">›</span>
+          </button>
+          <button class="settings-item" id="importBtn">
+            <div class="si-left"><span class="si-icon">📥</span><div><div class="si-label">Import Data</div><div class="si-desc">Restore from JSON</div></div></div>
+            <span class="si-right">›</span>
+          </button>
+          <button class="settings-item" id="clearBtn">
+            <div class="si-left"><span class="si-icon">🗑️</span><div><div class="si-label" style="color:var(--danger)">Clear All Data</div><div class="si-desc">Delete everything</div></div></div>
+            <span class="si-right">›</span>
+          </button>
+        </div>
+      </div>
+      <div style="text-align:center;color:var(--text-tertiary);font-size:11px;padding-top:16px;">
+        TimeFlow v2.0 — Made with ❤️
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR — 4 tabs -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-view="trackView"><span class="tab-icon">⏱️</span><span class="tab-label">Track</span></button>
+    <button class="tab-btn" data-view="timelineView"><span class="tab-icon">📅</span><span class="tab-label">Timeline</span></button>
+    <button class="tab-btn" data-view="analyticsView"><span class="tab-icon">📊</span><span class="tab-label">Insights</span></button>
+    <button class="tab-btn" data-view="settingsView"><span class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
+  </nav>
+
+  <!-- Block Modal -->
+  <div class="modal-overlay" id="blockModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="blockModalTitle">New Block</div>
+      <div class="modal-field">
+        <div class="modal-label">Block Name</div>
+        <input type="text" class="modal-input" id="blockNameInput" placeholder="e.g., Focus, Exercise..." maxlength="30">
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Time of Day Tag</div>
+        <div class="modal-tags" id="blockTagsContainer">
+          <button class="modal-tag-btn" data-tag="morning">🌅 Morning</button>
+          <button class="modal-tag-btn" data-tag="afternoon">☀️ Afternoon</button>
+          <button class="modal-tag-btn" data-tag="evening">🌇 Evening</button>
+          <button class="modal-tag-btn" data-tag="night">🌙 Night</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" id="blockModalCancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="blockModalSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Modal -->
+  <div class="modal-overlay" id="entryModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Edit Entry</div>
+      <div id="entryModalInfo"></div>
+      <div class="modal-field">
+        <div class="modal-label">What did you do?</div>
+        <textarea class="modal-input" id="entryAnnotation" placeholder="e.g., Video editing, Reading..."></textarea>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Tags</div>
+        <div class="modal-tags" id="entryTagsContainer">
+          <button class="modal-tag-btn" data-tag="morning">🌅 Morning</button>
+          <button class="modal-tag-btn" data-tag="afternoon">☀️ Afternoon</button>
+          <button class="modal-tag-btn" data-tag="evening">🌇 Evening</button>
+          <button class="modal-tag-btn" data-tag="night">🌙 Night</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" id="entryModalCancel">Cancel</button>
+        <button class="modal-btn modal-btn-danger" id="entryModalDelete">Delete</button>
+        <button class="modal-btn modal-btn-primary" id="entryModalSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="confirmTitle">Are you sure?</div>
+      <p id="confirmMessage" style="color:var(--text-secondary);font-size:13px;margin-bottom:18px;"></p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="modal-btn modal-btn-danger" id="confirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="importInput" accept=".json">
+</div>
+
+<script>
+// ============================================================
+// SOUND EFFECTS (Web Audio API)
+// ============================================================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playStartSound() {
+  try {
+    const ctx = getAudioCtx();
+    const o1 = ctx.createOscillator();
+    const o2 = ctx.createOscillator();
+    const g = ctx.createGain();
+    o1.type = 'sine'; o1.frequency.value = 520;
+    o2.type = 'sine'; o2.frequency.value = 780;
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o1.connect(g); o2.connect(g); g.connect(ctx.destination);
+    o1.start(ctx.currentTime); o2.start(ctx.currentTime + 0.1);
+    o1.stop(ctx.currentTime + 0.15); o2.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
+function playStopSound() {
+  try {
+    const ctx = getAudioCtx();
+    const o1 = ctx.createOscillator();
+    const o2 = ctx.createOscillator();
+    const g = ctx.createGain();
+    o1.type = 'sine'; o1.frequency.value = 660;
+    o2.type = 'sine'; o2.frequency.value = 440;
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    o1.connect(g); o2.connect(g); g.connect(ctx.destination);
+    o1.start(ctx.currentTime); o2.start(ctx.currentTime + 0.12);
+    o1.stop(ctx.currentTime + 0.12); o2.stop(ctx.currentTime + 0.35);
+  } catch(e) {}
+}
+
+// ============================================================
+// DATA
+// ============================================================
+const COLORS = ['#6C5CE7','#00B894','#FD79A8','#FDCB6E','#0984E3','#E17055','#00CEC9','#A29BFE','#FF6B6B','#48DBFB','#FF9FF3','#1DD1A1'];
+const STORAGE_KEY = 'timeflow_data';
+
+function uuid() { return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch(e) {} return { blocks: [], entries: [] }; }
+function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+let data = loadData();
+// Migrate: ensure blocks have tag field
+data.blocks.forEach(b => { if (!b.tag) b.tag = ''; });
+
+let activeBlockId = null, activeStartTime = null, timerInterval = null;
+
+function restoreActive() {
+  try { const a = JSON.parse(localStorage.getItem('timeflow_active')); if (a?.blockId) { activeBlockId = a.blockId; activeStartTime = new Date(a.startTime); } } catch(e) {}
+}
+function saveActive() {
+  if (activeBlockId) localStorage.setItem('timeflow_active', JSON.stringify({ blockId: activeBlockId, startTime: activeStartTime.toISOString() }));
+  else localStorage.removeItem('timeflow_active');
+}
+restoreActive();
+
+// ============================================================
+// UTILITY
+// ============================================================
+function formatTime(d) { return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }); }
+function formatDuration(ms) { const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; if(h>0) return `${h}h ${m}m`; if(m>0) return `${m}m ${sec}s`; return `${sec}s`; }
+function formatDurationLong(ms) { const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+function formatHours(ms) { return (ms / 3600000).toFixed(1) + 'h'; }
+function formatDate(d) { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+function isSameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function getBlockColor(block) { const i=data.blocks.indexOf(block); return COLORS[(i>=0?i:0)%COLORS.length]; }
+function getBlockById(id) { return data.blocks.find(b => b.id === id); }
+function escHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function tagEmoji(t) { return {morning:'🌅',afternoon:'☀️',evening:'🌇',night:'🌙'}[t]||''; }
+function capitalize(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+function tagClass(t) { return 'tag-'+t; }
+
+function getTodayEntries() { const t=new Date(); return data.entries.filter(e => e.endTime && isSameDay(new Date(e.startTime), t)); }
+function getTodayTotal() { return getTodayEntries().reduce((s,e) => s + (new Date(e.endTime)-new Date(e.startTime)), 0); }
+function getTodayBlockTotal(bid) { return getTodayEntries().filter(e=>e.blockId===bid).reduce((s,e)=>s+(new Date(e.endTime)-new Date(e.startTime)),0); }
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const views = document.querySelectorAll('.view');
+const tabBtns = document.querySelectorAll('.tab-btn');
+let currentView = 'trackView';
+
+function switchView(vid) {
+  currentView = vid;
+  views.forEach(v => v.classList.toggle('active', v.id === vid));
+  tabBtns.forEach(b => b.classList.toggle('active', b.dataset.view === vid));
+  if (vid === 'timelineView') renderTimeline();
+  if (vid === 'settingsView') renderSettings();
+  if (vid === 'analyticsView') renderAnalytics();
+}
+tabBtns.forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+// Header date
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+// ============================================================
+// TRACK VIEW
+// ============================================================
+let trackFilter = 'all'; // 'all', 'morning', 'afternoon', 'evening', 'night'
+
+function renderTrackView() { renderStats(); renderTrackFilterBar(); renderBlocks(); }
+
+function renderStats() {
+  const bar = document.getElementById('statsBar');
+  const te = getTodayEntries(), tot = getTodayTotal();
+  bar.innerHTML = `
+    <div class="stat-card"><div class="stat-value">${te.length}</div><div class="stat-label">Sessions</div></div>
+    <div class="stat-card"><div class="stat-value">${formatDuration(tot)}</div><div class="stat-label">Tracked</div></div>
+    <div class="stat-card"><div class="stat-value">${data.blocks.length}</div><div class="stat-label">Blocks</div></div>
+  `;
+}
+
+function renderTrackFilterBar() {
+  const bar = document.getElementById('trackFilterBar');
+  const tags = ['morning','afternoon','evening','night'];
+  let html = `<button class="filter-chip ${trackFilter==='all'?'active':''}" data-tf="all">All</button>`;
+  tags.forEach(t => { html += `<button class="filter-chip ${trackFilter===t?'active':''}" data-tf="${t}">${tagEmoji(t)} ${capitalize(t)}</button>`; });
+  bar.innerHTML = html;
+  bar.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => { trackFilter = btn.dataset.tf; renderTrackView(); });
+  });
+}
+
+function renderBlocks() {
+  const grid = document.getElementById('blocksGrid');
+  let blocks = data.blocks;
+  if (trackFilter !== 'all') blocks = blocks.filter(b => b.tag === trackFilter);
+
+  let html = '';
+  blocks.forEach(block => {
+    const i = data.blocks.indexOf(block);
+    const palIdx = i % COLORS.length;
+    const isActive = activeBlockId === block.id;
+    const todayMs = getTodayBlockTotal(block.id);
+    const tagBadge = block.tag ? `<span class="block-tag ${tagClass(block.tag)}">${tagEmoji(block.tag)} ${capitalize(block.tag)}</span>` : '';
+
+    html += `
+      <div class="block-card pal-${palIdx} ${isActive ? 'is-active' : ''}" data-block-id="${block.id}">
+        <button class="block-menu-btn" data-menu-block="${block.id}">⋯</button>
+        <div class="block-name">${escHtml(block.name)}</div>
+        ${tagBadge}
+        ${isActive ? `<div class="block-timer" id="blockTimer-${block.id}">00:00:00</div><div class="block-status">● REC</div>` : `<div class="block-today">${todayMs > 0 ? formatDuration(todayMs) : '—'}</div>`}
+      </div>
+    `;
+  });
+  html += `<button class="add-block-card" id="addBlockBtn"><span class="plus">+</span><span class="label">Add</span></button>`;
+  grid.innerHTML = html;
+
+  grid.querySelectorAll('.block-card').forEach(card => {
+    card.addEventListener('click', e => { if (e.target.closest('.block-menu-btn')) return; toggleBlock(card.dataset.blockId); });
+  });
+  grid.querySelectorAll('.block-menu-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); showBlockContextMenu(btn, btn.dataset.menuBlock); });
+  });
+  document.getElementById('addBlockBtn').addEventListener('click', () => openBlockModal());
+}
+
+// ============================================================
+// TRACKING
+// ============================================================
+function toggleBlock(bid) { if (activeBlockId===bid) stopTracking(); else { if (activeBlockId) stopTracking(); startTracking(bid); } }
+
+function startTracking(bid) {
+  activeBlockId = bid; activeStartTime = new Date();
+  saveActive(); startTimer(); playStartSound(); renderTrackView();
+}
+
+function stopTracking() {
+  if (!activeBlockId || !activeStartTime) return;
+  const block = getBlockById(activeBlockId);
+  const entry = { id: uuid(), blockId: activeBlockId, startTime: activeStartTime.toISOString(), endTime: new Date().toISOString(), annotation: '', tags: block && block.tag ? [block.tag] : [] };
+  data.entries.push(entry); saveData(data);
+  activeBlockId = null; activeStartTime = null; saveActive();
+  clearInterval(timerInterval); timerInterval = null;
+  playStopSound(); renderTrackView();
+}
+
+function startTimer() { clearInterval(timerInterval); timerInterval = setInterval(updateTimerDisplays, 1000); updateTimerDisplays(); }
+function updateTimerDisplays() {
+  if (!activeBlockId || !activeStartTime) return;
+  const str = formatDurationLong(Date.now() - activeStartTime.getTime());
+  const el = document.getElementById('blockTimer-' + activeBlockId);
+  if (el) el.textContent = str;
+}
+if (activeBlockId) startTimer();
+
+// ============================================================
+// BLOCK CONTEXT MENU
+// ============================================================
+let openCtxMenu = null;
+function showBlockContextMenu(anchor, bid) {
+  closeCtxMenu();
+  const block = getBlockById(bid); if (!block) return;
+  const menu = document.createElement('div'); menu.className = 'context-menu';
+  menu.innerHTML = `<button data-action="rename"><span>✏️</span> Rename</button><button data-action="delete" class="danger-item"><span>🗑️</span> Delete</button>`;
+  const r = anchor.getBoundingClientRect();
+  menu.style.position='fixed'; menu.style.top=(r.bottom+4)+'px'; menu.style.right=(window.innerWidth-r.right)+'px';
+  document.body.appendChild(menu); openCtxMenu = menu;
+  menu.querySelector('[data-action="rename"]').addEventListener('click', () => { closeCtxMenu(); openBlockModal(block); });
+  menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+    closeCtxMenu();
+    showConfirm(`Delete "${block.name}"?`, 'All entries for this block will be deleted.', () => {
+      if (activeBlockId===block.id) { activeBlockId=null; activeStartTime=null; saveActive(); clearInterval(timerInterval); }
+      data.entries=data.entries.filter(e=>e.blockId!==block.id); data.blocks=data.blocks.filter(b=>b.id!==block.id);
+      saveData(data); renderTrackView();
+    });
+  });
+  setTimeout(() => document.addEventListener('click', closeCtxHandler), 10);
+}
+function closeCtxMenu() { if (openCtxMenu) { openCtxMenu.remove(); openCtxMenu=null; } document.removeEventListener('click', closeCtxHandler); }
+function closeCtxHandler(e) { if (openCtxMenu && !openCtxMenu.contains(e.target)) closeCtxMenu(); }
+
+// ============================================================
+// BLOCK MODAL (with tag selector)
+// ============================================================
+let editingBlock = null;
+
+function openBlockModal(block) {
+  editingBlock = block || null;
+  document.getElementById('blockModalTitle').textContent = block ? 'Edit Block' : 'New Block';
+  document.getElementById('blockNameInput').value = block ? block.name : '';
+  // Set tag buttons
+  document.querySelectorAll('#blockTagsContainer .modal-tag-btn').forEach(btn => {
+    btn.classList.toggle('selected', block ? block.tag === btn.dataset.tag : false);
+  });
+  openModal('blockModal');
+  setTimeout(() => document.getElementById('blockNameInput').focus(), 350);
+}
+
+// Tag toggle (single select for block)
+document.querySelectorAll('#blockTagsContainer .modal-tag-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const was = btn.classList.contains('selected');
+    document.querySelectorAll('#blockTagsContainer .modal-tag-btn').forEach(b => b.classList.remove('selected'));
+    if (!was) btn.classList.add('selected');
+  });
+});
+
+document.getElementById('blockModalCancel').addEventListener('click', () => closeModal('blockModal'));
+document.getElementById('blockModalSave').addEventListener('click', () => {
+  const name = document.getElementById('blockNameInput').value.trim();
+  if (!name) return;
+  const selTag = document.querySelector('#blockTagsContainer .modal-tag-btn.selected');
+  const tag = selTag ? selTag.dataset.tag : '';
+  if (editingBlock) { editingBlock.name = name; editingBlock.tag = tag; }
+  else { data.blocks.push({ id: uuid(), name, tag, createdAt: new Date().toISOString() }); }
+  saveData(data); closeModal('blockModal'); renderTrackView();
+  if (currentView === 'settingsView') renderSettings();
+});
+document.getElementById('blockNameInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('blockModalSave').click(); });
+
+// ============================================================
+// TIMELINE VIEW (no filters here — they're on Track)
+// ============================================================
+let timelineDate = new Date();
+
+document.getElementById('prevDay').addEventListener('click', () => { timelineDate.setDate(timelineDate.getDate()-1); renderTimeline(); });
+document.getElementById('nextDay').addEventListener('click', () => { timelineDate.setDate(timelineDate.getDate()+1); renderTimeline(); });
+document.getElementById('todayBtn').addEventListener('click', () => { timelineDate=new Date(); renderTimeline(); });
+
+function renderTimeline() {
+  const today = new Date();
+  document.getElementById('timelineDateLabel').textContent = isSameDay(timelineDate, today) ? 'Today' : formatDate(timelineDate);
+
+  let entries = data.entries.filter(e => e.endTime && isSameDay(new Date(e.startTime), timelineDate));
+  entries.sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+  const scroll = document.getElementById('timelineScroll');
+
+  if (entries.length===0) { scroll.innerHTML = `<div class="timeline-empty"><div class="emoji">📭</div><div class="msg">No entries this day</div></div>`; return; }
+
+  let html = '';
+  entries.forEach(entry => {
+    const block = getBlockById(entry.blockId);
+    const color = block ? getBlockColor(block) : '#888';
+    const start = new Date(entry.startTime), end = new Date(entry.endTime), dur = end-start;
+    const tagHtml = (entry.tags||[]).map(t => `<span class="entry-tag ${tagClass(t)}">${tagEmoji(t)} ${capitalize(t)}</span>`).join('');
+    html += `
+      <div class="timeline-entry" style="--entry-color:${color}" data-entry-id="${entry.id}">
+        <div class="entry-top"><div class="entry-block-name">${block?escHtml(block.name):'?'}</div><div class="entry-duration">${formatDuration(dur)}</div></div>
+        <div class="entry-time">${formatTime(start)} → ${formatTime(end)}</div>
+        ${entry.annotation ? `<div class="entry-annotation">${escHtml(entry.annotation)}</div>` : ''}
+        ${tagHtml ? `<div class="entry-tags">${tagHtml}</div>` : ''}
+      </div>
+    `;
+  });
+  scroll.innerHTML = html;
+  scroll.querySelectorAll('.timeline-entry').forEach(el => el.addEventListener('click', () => openEntryModal(el.dataset.entryId)));
+}
+
+// ============================================================
+// ENTRY MODAL
+// ============================================================
+let editingEntryId = null;
+
+function openEntryModal(eid) {
+  const entry = data.entries.find(e=>e.id===eid); if (!entry) return;
+  editingEntryId = eid;
+  const block = getBlockById(entry.blockId);
+  const s=new Date(entry.startTime), en=new Date(entry.endTime);
+  document.getElementById('entryModalInfo').innerHTML = `
+    <div style="margin-bottom:14px;padding:10px;border-radius:10px;background:var(--bg-glass);border:1px solid var(--border-glass);">
+      <div style="font-weight:700;font-size:14px;color:${block?getBlockColor(block):'#888'}">${block?escHtml(block.name):'?'}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">${formatTime(s)} → ${formatTime(en)} · ${formatDuration(en-s)}</div>
+    </div>`;
+  document.getElementById('entryAnnotation').value = entry.annotation || '';
+  document.querySelectorAll('#entryTagsContainer .modal-tag-btn').forEach(btn => btn.classList.toggle('selected', (entry.tags||[]).includes(btn.dataset.tag)));
+  openModal('entryModal');
+}
+
+document.querySelectorAll('#entryTagsContainer .modal-tag-btn').forEach(btn => btn.addEventListener('click', () => btn.classList.toggle('selected')));
+
+document.getElementById('entryModalCancel').addEventListener('click', () => closeModal('entryModal'));
+document.getElementById('entryModalDelete').addEventListener('click', () => {
+  closeModal('entryModal');
+  showConfirm('Delete entry?', 'This entry will be permanently removed.', () => {
+    data.entries = data.entries.filter(e=>e.id!==editingEntryId); saveData(data); renderTimeline(); renderTrackView();
+  });
+});
+document.getElementById('entryModalSave').addEventListener('click', () => {
+  const entry = data.entries.find(e=>e.id===editingEntryId); if (!entry) return;
+  entry.annotation = document.getElementById('entryAnnotation').value.trim();
+  const tags = []; document.querySelectorAll('#entryTagsContainer .modal-tag-btn.selected').forEach(b => tags.push(b.dataset.tag));
+  entry.tags = tags; saveData(data); closeModal('entryModal'); renderTimeline();
+});
+
+// ============================================================
+// ANALYTICS VIEW
+// ============================================================
+let analyticsPeriod = 'today';
+
+document.querySelectorAll('#periodSelector .period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    analyticsPeriod = btn.dataset.period;
+    document.querySelectorAll('#periodSelector .period-btn').forEach(b => b.classList.toggle('active', b===btn));
+    renderAnalytics();
+  });
+});
+
+function getEntriesForPeriod(period) {
+  const now = new Date();
+  return data.entries.filter(e => {
+    if (!e.endTime) return false;
+    const s = new Date(e.startTime);
+    if (period==='today') return isSameDay(s, now);
+    if (period==='week') { const d=new Date(now); d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0); return s>=d; }
+    if (period==='month') { const d=new Date(now.getFullYear(), now.getMonth(), 1); return s>=d; }
+    return true; // all
+  });
+}
+
+function renderAnalytics() {
+  const container = document.getElementById('analyticsContent');
+  const entries = getEntriesForPeriod(analyticsPeriod);
+
+  if (entries.length === 0) {
+    container.innerHTML = `<div class="no-data-msg"><div style="font-size:40px;margin-bottom:10px;">📊</div>No data for this period yet.<br>Start tracking to see insights!</div>`;
+    return;
+  }
+
+  const totalMs = entries.reduce((s,e) => s + (new Date(e.endTime)-new Date(e.startTime)), 0);
+  const avgMs = totalMs / entries.length;
+
+  // Time per block
+  const blockTimes = {};
+  entries.forEach(e => {
+    const dur = new Date(e.endTime)-new Date(e.startTime);
+    blockTimes[e.blockId] = (blockTimes[e.blockId]||0) + dur;
+  });
+  const maxBlockTime = Math.max(...Object.values(blockTimes), 1);
+
+  // Tag distribution
+  const tagCounts = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+  let tagTotal = 0;
+  entries.forEach(e => (e.tags||[]).forEach(t => { if (tagCounts.hasOwnProperty(t)) { tagCounts[t]++; tagTotal++; } }));
+
+  // Longest session
+  let longestMs = 0, longestBlock = '';
+  entries.forEach(e => { const d=new Date(e.endTime)-new Date(e.startTime); if(d>longestMs) { longestMs=d; longestBlock=e.blockId; } });
+  const lBlock = getBlockById(longestBlock);
+
+  // Most used block
+  const blockCounts = {};
+  entries.forEach(e => blockCounts[e.blockId] = (blockCounts[e.blockId]||0)+1);
+  const mostUsedId = Object.entries(blockCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const mostUsed = getBlockById(mostUsedId);
+
+  // Weekly bars (last 7 days)
+  const weekDays = [];
+  for (let i=6; i>=0; i--) { const d=new Date(); d.setDate(d.getDate()-i); weekDays.push(d); }
+  const dayTotals = weekDays.map(day => {
+    return data.entries.filter(e => e.endTime && isSameDay(new Date(e.startTime), day))
+      .reduce((s,e) => s + (new Date(e.endTime)-new Date(e.startTime)), 0);
+  });
+  const maxDay = Math.max(...dayTotals, 1);
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  let html = '';
+
+  // Big total stat
+  html += `<div class="analytics-card"><div class="analytics-big-stat">
+    <div class="big-val">${formatHours(totalMs)}</div>
+    <div class="big-label">Total Time Tracked</div>
+  </div></div>`;
+
+  // Insight cards row
+  html += `<div class="insight-row">
+    <div class="insight-card"><div class="insight-val">${entries.length}</div><div class="insight-label">Sessions</div></div>
+    <div class="insight-card"><div class="insight-val">${formatDuration(avgMs)}</div><div class="insight-label">Avg Session</div></div>
+    <div class="insight-card"><div class="insight-val">${formatDuration(longestMs)}</div><div class="insight-label">Longest</div></div>
+  </div>`;
+
+  // Most active block
+  if (mostUsed) {
+    html += `<div class="analytics-card" style="display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:${getBlockColor(mostUsed)};opacity:0.3;flex-shrink:0;"></div>
+      <div><div style="font-size:12px;color:var(--text-tertiary);">Most Active Block</div>
+      <div style="font-size:15px;font-weight:700;color:${getBlockColor(mostUsed)}">${escHtml(mostUsed.name)}</div>
+      <div style="font-size:11px;color:var(--text-secondary);">${blockCounts[mostUsedId]} sessions · ${formatHours(blockTimes[mostUsedId]||0)}</div></div>
+    </div>`;
+  }
+
+  // Weekly activity bars
+  html += `<div class="analytics-card">
+    <div class="analytics-card-title">Last 7 Days</div>
+    <div class="week-bars">`;
+  weekDays.forEach((day, idx) => {
+    const pct = dayTotals[idx] / maxDay * 100;
+    const isToday = isSameDay(day, new Date());
+    html += `<div class="week-bar-col">
+      ${dayTotals[idx]>0 ? `<div class="week-bar-val">${formatDuration(dayTotals[idx])}</div>` : ''}
+      <div class="week-bar" style="height:${Math.max(pct,3)}%;${isToday?'background:linear-gradient(180deg,#2ed573,rgba(46,213,115,0.3));':''}"></div>
+      <div class="week-bar-label" style="${isToday?'color:var(--text-primary);':''}">${dayNames[day.getDay()]}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  // Time per block bar chart
+  const sortedBlocks = Object.entries(blockTimes).sort((a,b) => b[1]-a[1]);
+  if (sortedBlocks.length > 0) {
+    html += `<div class="analytics-card"><div class="analytics-card-title">Time by Block</div><div class="bar-chart">`;
+    sortedBlocks.forEach(([bid, ms]) => {
+      const block = getBlockById(bid);
+      const color = block ? getBlockColor(block) : '#888';
+      const pct = (ms / maxBlockTime) * 100;
+      html += `<div class="bar-row">
+        <div class="bar-label" style="color:${color}">${block?escHtml(block.name):'?'}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color};">
+          <span class="bar-fill-label">${formatHours(ms)}</span>
+        </div></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Tag distribution donut
+  if (tagTotal > 0) {
+    const tagColors = { morning: '#FDCB6E', afternoon: '#E17055', evening: '#A29BFE', night: '#48DBFB' };
+    let conicParts = [], angle = 0;
+    ['morning','afternoon','evening','night'].forEach(t => {
+      if (tagCounts[t] > 0) {
+        const pct = (tagCounts[t]/tagTotal)*100;
+        conicParts.push(`${tagColors[t]} ${angle}deg ${angle+pct*3.6}deg`);
+        angle += pct * 3.6;
+      }
+    });
+    const conicStr = conicParts.join(', ') || 'transparent 0deg 360deg';
+
+    html += `<div class="analytics-card"><div class="analytics-card-title">Tag Distribution</div>
+      <div class="donut-container">
+        <div class="donut" style="background:conic-gradient(${conicStr});"></div>
+        <div class="donut-legend">`;
+    ['morning','afternoon','evening','night'].forEach(t => {
+      if (tagCounts[t] > 0) {
+        const pct = Math.round((tagCounts[t]/tagTotal)*100);
+        html += `<div class="donut-legend-item"><div class="donut-legend-dot" style="background:${tagColors[t]}"></div>${tagEmoji(t)} ${capitalize(t)} — ${pct}%</div>`;
+      }
+    });
+    html += `</div></div></div>`;
+  }
+
+  // Sessions with annotations
+  const annotated = entries.filter(e => e.annotation);
+  if (annotated.length > 0) {
+    html += `<div class="analytics-card"><div class="analytics-card-title">Recent Notes (${annotated.length})</div>`;
+    annotated.slice(-5).reverse().forEach(e => {
+      const block = getBlockById(e.blockId);
+      const color = block ? getBlockColor(block) : '#888';
+      html += `<div style="padding:8px 0;border-bottom:1px solid var(--border-glass);font-size:12px;">
+        <span style="color:${color};font-weight:600;">${block?escHtml(block.name):'?'}</span>
+        <span style="color:var(--text-tertiary);"> · ${formatTime(new Date(e.startTime))}</span>
+        <div style="color:var(--text-secondary);margin-top:2px;">${escHtml(e.annotation)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function renderSettings() {
+  const list = document.getElementById('blocksList');
+  if (data.blocks.length===0) { list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:12px;">No blocks yet</div>`; return; }
+  let html = '';
+  data.blocks.forEach((block, i) => {
+    const color = COLORS[i%COLORS.length];
+    const tagBadge = block.tag ? `<span class="block-list-tag ${tagClass(block.tag)}">${tagEmoji(block.tag)} ${capitalize(block.tag)}</span>` : '';
+    html += `<div class="block-list-item">
+      <div class="block-list-dot" style="background:${color}"></div>
+      <div class="block-list-name">${escHtml(block.name)}</div>
+      ${tagBadge}
+      <div class="block-list-actions">
+        <button data-rename="${block.id}">✏️</button>
+        <button data-delete="${block.id}">🗑️</button>
+      </div>
+    </div>`;
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => { const bl=getBlockById(b.dataset.rename); if(bl) openBlockModal(bl); }));
+  list.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => {
+    const bl=getBlockById(b.dataset.delete); if(!bl) return;
+    showConfirm(`Delete "${bl.name}"?`, 'All entries for this block will be deleted.', () => {
+      if (activeBlockId===bl.id) { activeBlockId=null; activeStartTime=null; saveActive(); clearInterval(timerInterval); }
+      data.entries=data.entries.filter(e=>e.blockId!==bl.id); data.blocks=data.blocks.filter(x=>x.id!==bl.id);
+      saveData(data); renderSettings(); renderTrackView();
+    });
+  }));
+}
+
+// ============================================================
+// EXPORT / IMPORT / CLEAR
+// ============================================================
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`timeflow-${new Date().toISOString().slice(0,10)}.json`; a.click();
+});
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importInput').click());
+document.getElementById('importInput').addEventListener('change', e => {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{
+    try { const d=JSON.parse(r.result); if(d.blocks&&d.entries) { data=d; data.blocks.forEach(b=>{if(!b.tag)b.tag='';}); saveData(data); activeBlockId=null; activeStartTime=null; saveActive(); clearInterval(timerInterval); renderTrackView(); renderSettings(); alert('Imported!'); } else alert('Invalid format.');
+    } catch(er) { alert('Error: '+er.message); }
+  }; r.readAsText(f); e.target.value='';
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  showConfirm('Clear all data?', 'Everything will be permanently deleted.', () => {
+    data={blocks:[],entries:[]}; saveData(data); activeBlockId=null; activeStartTime=null; saveActive();
+    clearInterval(timerInterval); renderTrackView(); renderSettings();
+  });
+});
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('active'); }));
+
+let confirmCb = null;
+function showConfirm(title, msg, cb) {
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmMessage').textContent=msg;
+  confirmCb=cb; openModal('confirmModal');
+}
+document.getElementById('confirmCancel').addEventListener('click', () => closeModal('confirmModal'));
+document.getElementById('confirmOk').addEventListener('click', () => { closeModal('confirmModal'); if(confirmCb) confirmCb(); confirmCb=null; });
+
+// ============================================================
+// INIT
+// ============================================================
+renderTrackView();
+setInterval(() => { if (activeBlockId && currentView==='trackView') renderStats(); }, 5000);
+</script>
+</body>
+</html>
